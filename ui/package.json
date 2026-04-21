@@ -1,0 +1,28 @@
+{
+  "name": "synapse-db-query-ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-vega": "^8.0.0",
+    "vega": "^6.2.0",
+    "vega-embed": "^7.1.0",
+    "vega-interpreter": "^2.2.1",
+    "vega-lite": "^6.4.2"
+  },
+  "devDependencies": {
+    "@nimblebrain/synapse": "^0.4.4",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.9",
+    "vite-plugin-singlefile": "^2.3.3"
+  }
+}

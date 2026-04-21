@@ -1,0 +1,56 @@
+{
+  "$schema": "https://schemas.nimblebrain.ai/v1/nimblebrain-server.schema.json",
+  "name": "ai.nimblebrain/synapse-db-query",
+  "description": "Natural-language Postgres query app with dynamic Vega-Lite visualizations",
+  "version": "0.1.0",
+  "title": "DB Query Synapse App",
+  "repository": {
+    "url": "https://github.com/NimbleBrainInc/synapse-db-query",
+    "source": "https://github.com/NimbleBrainInc/synapse-db-query"
+  },
+  "_meta": {
+    "ai.nimblebrain/v1": {
+      "runtime": "python:3.13",
+      "capabilities": {
+        "tools": true,
+        "resources": true,
+        "prompts": false
+      },
+      "display": {
+        "category": "data",
+        "tags": [
+          "synapse",
+          "postgres",
+          "sql",
+          "visualization",
+          "vega-lite"
+        ]
+      },
+      "deployment": {
+        "protocol": "http",
+        "port": 8000,
+        "mcpPath": "/mcp"
+      },
+      "container": {
+        "healthCheck": {
+          "path": "/health",
+          "port": 8000
+        }
+      },
+      "resources": {
+        "limits": {
+          "memory": "512Mi",
+          "cpu": "500m"
+        },
+        "requests": {
+          "memory": "128Mi",
+          "cpu": "100m"
+        }
+      },
+      "scaling": {
+        "minReplicas": 1,
+        "maxReplicas": 2
+      }
+    }
+  }
+}

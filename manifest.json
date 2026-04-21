@@ -1,0 +1,106 @@
+{
+  "manifest_version": "0.4",
+  "name": "@nimblebraininc/synapse-db-query",
+  "version": "0.1.0",
+  "description": "Natural-language Postgres query app with dynamic Vega-Lite visualizations",
+  "author": {
+    "name": "NimbleBrain Inc",
+    "email": "hello@nimblebrain.ai"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/NimbleBrainInc/synapse-db-query",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NimbleBrainInc/synapse-db-query"
+  },
+  "server": {
+    "type": "python",
+    "entry_point": "synapse_db_query.server",
+    "mcp_config": {
+      "command": "python",
+      "args": [
+        "-m",
+        "synapse_db_query.server"
+      ]
+    }
+  },
+  "tools": [
+    {
+      "name": "get_schema",
+      "description": "Return tables, columns, types, and foreign keys for the connected database"
+    },
+    {
+      "name": "run_query",
+      "description": "Execute a read-only SELECT. Returns rows to the agent only — NOT visible to the user. Use for probes, inspection, and fetching the rows that will become the final answer."
+    },
+    {
+      "name": "present_result",
+      "description": "Display a query result to the user. The only way to update the UI. Call exactly once per user question, with the final rows (and a Vega-Lite spec when the shape is visualizable)."
+    },
+    {
+      "name": "get_last_result",
+      "description": "Return the most recently presented result (for UI sync)."
+    }
+  ],
+  "user_config": {
+    "database_url": {
+      "type": "string",
+      "title": "Database URL",
+      "description": "Postgres connection string for a read-only role (postgresql://user:pass@host:port/db)",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "_meta": {
+    "org.mpaktrust": {
+      "mtf_version": "0.1",
+      "permissions": {
+        "filesystem": "none",
+        "network": "outbound",
+        "environment": "read",
+        "subprocess": "none",
+        "native": "none"
+      }
+    },
+    "ai.nimblebrain/host": {
+      "host_version": "1.0",
+      "name": "DB Query",
+      "icon": "database",
+      "category": "data",
+      "placements": [
+        {
+          "slot": "sidebar.apps",
+          "resourceUri": "ui://db-query/main",
+          "route": "@nimblebraininc/db-query",
+          "label": "DB Query",
+          "icon": "database"
+        }
+      ]
+    },
+    "ai.nimblebrain/upjack": {
+      "upjack_version": "0.1",
+      "namespace": "apps/db-query",
+      "display": {
+        "name": "DB Query",
+        "icon": "database",
+        "category": "data"
+      },
+      "entities": [
+        {
+          "name": "query",
+          "plural": "queries",
+          "prefix": "qy",
+          "schema": "schemas/query.schema.json",
+          "index": true,
+          "tools": ["list", "search", "get"]
+        }
+      ],
+      "skills": [
+        {
+          "source": "bundled",
+          "path": "skills/query-coach/SKILL.md"
+        }
+      ]
+    }
+  }
+}

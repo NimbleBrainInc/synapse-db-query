@@ -1,0 +1,35 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.ruff_cache/
+.pytest_cache/
+dist/
+build/
+
+# MCPB bundles + env
+*.mcpb
+.env
+.env.*
+
+# Vendored deps (built by CI / mcpb-pack)
+deps/
+
+# UI build artifacts
+ui/dist/
+ui/node_modules/
+ui/.vite/
+
+# Upjack / NimbleBrain runtime workspace (entity data, logs)
+.nimblebrain/
+workspace/
+
+# Editor / tool
+.claude/
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,42 @@
+# Development scaffolding the bundle never needs.
+.venv/
+.git/
+.github/
+.claude/
+.idea/
+.vscode/
+
+# Python / test caches
+.pytest_cache/
+__pycache__/
+*.pyc
+.ruff_cache/
+*.egg-info/
+tests/
+
+# Build artifacts
+dist/
+build/
+*.mcpb
+ui/node_modules/
+ui/src/
+ui/.vite/
+
+# Dev-only configs and metadata
+Makefile
+pyproject.toml
+uv.lock
+scripts/
+CLAUDE.md
+
+# Secrets
+.env
+.env.*
+
+# Runtime workspace data (must never ship in a bundle)
+.nimblebrain/
+workspace/
+
+# OS
+.DS_Store
+Thumbs.db

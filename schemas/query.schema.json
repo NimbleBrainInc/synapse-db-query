@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Presented Query",
+  "description": "A query result the agent has presented to the user. Written exclusively by the present_result tool — immutable snapshot.",
+  "allOf": [
+    { "$ref": "https://upjack.dev/schemas/v1/upjack-entity.schema.json" }
+  ],
+  "properties": {
+    "question": {
+      "type": ["string", "null"],
+      "description": "The user's original natural-language question. Preserves their own words."
+    },
+    "summary": {
+      "type": ["string", "null"],
+      "description": "Short one-line takeaway the agent surfaced with the result."
+    },
+    "sql": {
+      "type": "string",
+      "description": "The SQL that produced the rows shown to the user."
+    },
+    "columns": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Ordered column names from the query result."
+    },
+    "rows": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "The row data, stored verbatim so the query can be replayed without hitting the database."
+    },
+    "row_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "truncated": {
+      "type": "boolean",
+      "description": "Whether the result hit the row cap at the time of presentation."
+    },
+    "vega_spec": {
+      "type": ["object", "null"],
+      "description": "The Vega-Lite spec used to render the chart, if any."
+    }
+  },
+  "required": ["sql", "columns", "rows", "row_count"]
+}
