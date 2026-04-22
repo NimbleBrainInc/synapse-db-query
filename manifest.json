@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.4",
   "name": "@nimblebraininc/synapse-db-query",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Natural-language Postgres query app with dynamic Vega-Lite visualizations",
   "author": {
     "name": "NimbleBrain Inc",
@@ -46,9 +46,9 @@
     "database_url": {
       "type": "string",
       "title": "Database URL",
-      "description": "Postgres connection string for a read-only role (postgresql://user:pass@host:port/db)",
+      "description": "Postgres connection string for a read-only role (postgresql://user:pass@host:port/db). Optional — you may instead provide DATABASE_URL via the host environment and add `allowedEnv: [\"DATABASE_URL\"]` to the bundle entry in workspace.json.",
       "sensitive": true,
-      "required": true
+      "required": false
     }
   },
   "_meta": {
@@ -92,7 +92,11 @@
           "prefix": "qy",
           "schema": "schemas/query.schema.json",
           "index": true,
-          "tools": ["list", "search", "get"]
+          "tools": [
+            "list",
+            "search",
+            "get"
+          ]
         }
       ],
       "skills": [
