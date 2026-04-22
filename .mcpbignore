@@ -15,8 +15,12 @@ __pycache__/
 tests/
 
 # Build artifacts
-dist/
-build/
+#
+# IMPORTANT: these patterns match anywhere in the tree. A bare `dist/` would
+# ALSO exclude `ui/dist/` — which is the single-file UI bundle we want shipped.
+# Scope Python build outputs narrowly to the repo root so we don't strip UI.
+/dist/
+/build/
 *.mcpb
 ui/node_modules/
 ui/src/

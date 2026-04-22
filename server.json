@@ -2,7 +2,7 @@
   "$schema": "https://schemas.nimblebrain.ai/v1/nimblebrain-server.schema.json",
   "name": "ai.nimblebrain/synapse-db-query",
   "description": "Natural-language Postgres query app with dynamic Vega-Lite visualizations",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "title": "DB Query Synapse App",
   "repository": {
     "url": "https://github.com/NimbleBrainInc/synapse-db-query",

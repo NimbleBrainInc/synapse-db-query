@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.4",
   "name": "@nimblebraininc/synapse-db-query",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Natural-language Postgres query app with dynamic Vega-Lite visualizations",
   "author": {
     "name": "NimbleBrain Inc",

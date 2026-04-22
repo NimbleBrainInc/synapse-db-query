@@ -1,6 +1,6 @@
 [project]
 name = "synapse-db-query"
-version = "0.2.0"
+version = "0.2.1"
 description = "Natural-language Postgres query app with dynamic Vega-Lite visualizations"
 readme = "README.md"
 license = {text = "MIT"}
