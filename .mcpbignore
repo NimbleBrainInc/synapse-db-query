@@ -1,18 +1,26 @@
+# mcpb pack loads this file and treats each pattern as gitignore-style.
+# Gitignore rule that bites: a pattern without a leading `/` matches
+# anywhere in the tree, including inside `deps/` / `node_modules/`.
+# Unanchored `tests/` or `conftest.py` strips vendored runtime modules
+# and breaks imports at bundle startup. Project-only patterns are
+# anchored with `/` below; cross-tree hygiene (`__pycache__`, `*.pyc`,
+# `.DS_Store`) is left unanchored intentionally.
+
 # Development scaffolding the bundle never needs.
-.venv/
-.git/
-.github/
-.claude/
-.idea/
-.vscode/
+/.venv/
+/.git/
+/.github/
+/.claude/
+/.idea/
+/.vscode/
 
 # Python / test caches
-.pytest_cache/
+/.pytest_cache/
 __pycache__/
 *.pyc
-.ruff_cache/
+/.ruff_cache/
 *.egg-info/
-tests/
+/tests/
 
 # Build artifacts
 #
@@ -27,19 +35,19 @@ ui/src/
 ui/.vite/
 
 # Dev-only configs and metadata
-Makefile
-pyproject.toml
-uv.lock
-scripts/
-CLAUDE.md
+/Makefile
+/pyproject.toml
+/uv.lock
+/scripts/
+/CLAUDE.md
 
 # Secrets
-.env
-.env.*
+/.env
+/.env.*
 
 # Runtime workspace data (must never ship in a bundle)
-.nimblebrain/
-workspace/
+/.nimblebrain/
+/workspace/
 
 # OS
 .DS_Store
