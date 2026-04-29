@@ -1,6 +1,6 @@
 [project]
 name = "synapse-db-query"
-version = "0.2.1"
+version = "0.3.0"
 description = "Natural-language Postgres query app with dynamic Vega-Lite visualizations"
 readme = "README.md"
 license = {text = "MIT"}
@@ -39,6 +39,8 @@ line-ending = "auto"
 
 [dependency-groups]
 dev = [
+    "pytest>=8.4.2",
+    "pytest-asyncio>=0.24.0",
     "ruff>=0.13.1",
     "ty>=0.0.1a1",
 ]
