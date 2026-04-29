@@ -591,10 +591,27 @@ _SETTINGS_HTML = """\
         status.textContent = "Saving…";
         saveBtn.disabled = true;
         try {
-          await callTool("set_custom_instructions", { text: ta.value });
+          // The 8 KiB cap is enforced server-side on UTF-8 bytes, while the
+          // UI count guard works in JS code units — non-ASCII (emoji, CJK)
+          // can pass the local check and still get rejected. The tool returns
+          // {status: "error", error: "..."} for those rather than throwing,
+          // so we have to inspect structuredContent before calling it a save.
+          const result = await callTool("set_custom_instructions", { text: ta.value });
+          let payload = result && result.structuredContent;
+          if (!payload) {
+            try {
+              payload = JSON.parse((result && result.content && result.content[0] && result.content[0].text) || "{}");
+            } catch (_) { payload = {}; }
+          }
+          if (payload && payload.status === "error") {
+            status.className = "status err";
+            status.textContent = payload.error || "Save rejected";
+            refreshCount();
+            return;
+          }
           lastSaved = ta.value;
           status.className = "status ok";
-          status.textContent = "Saved";
+          status.textContent = payload && payload.status === "cleared" ? "Cleared" : "Saved";
           refreshCount();
           setTimeout(() => { status.textContent = ""; status.className = "status"; }, 1500);
         } catch (err) {

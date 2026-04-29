@@ -17,6 +17,7 @@ Do not invoke this skill for questions the user is asking about the codebase, wo
 | `get_schema` | Returns tables, columns, types, and foreign keys. Call once per session to learn what exists. |
 | `run_query` | Executes a read-only SELECT. Optionally takes a Vega-Lite spec to render a chart. |
 | `get_last_result` | Returns the most recent query result. Used by the UI for sync; rarely needed in the agent flow. |
+| `set_custom_instructions` | Saves user conventions (default time windows, schema scoping, soft-delete rules, naming quirks) so they persist across turns. Use only when the user explicitly asks; empty clears. Capped at 8 KiB. |
 
 ## Process
 
