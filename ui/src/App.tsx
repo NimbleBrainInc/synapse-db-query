@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   SynapseProvider,
   useCallTool,
@@ -15,6 +15,11 @@ import { expressionInterpreter } from "vega-interpreter";
 type Row = Record<string, unknown>;
 
 type QueryResult = {
+  // Present once the entity is persisted (i.e. anything that came back from
+  // present_result or list_queries). EMPTY_RESULT lacks them — that's how we
+  // tell "no selection yet" from "user is viewing entry X".
+  id?: string;
+  created_at?: string;
   sql: string | null;
   question: string | null;
   summary: string | null;
@@ -44,7 +49,9 @@ const DBQ_CSS = `
 .dbq-root {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 1.5rem;
+  /* Fluid page padding: scales with viewport between 1rem and 1.5rem so
+     narrow iframes (NimbleBrain sidebar, mobile) don't lose ~50px to chrome. */
+  padding: clamp(1rem, 3vw, 1.5rem);
   font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
   font-size: var(--font-text-base-size, 1rem);
   line-height: var(--font-text-base-line-height, 1.5rem);
@@ -53,8 +60,10 @@ const DBQ_CSS = `
 }
 .dbq-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
+  gap: 0.5rem;
   margin-bottom: 1rem;
 }
 .dbq-heading {
@@ -234,6 +243,9 @@ const DBQ_CSS = `
 .dbq-caret.open { transform: rotate(90deg); }
 .dbq-question-preview {
   flex: 1;
+  /* min-width:0 lets the flex child actually shrink below its content's
+     intrinsic min-width, which is what allows text-overflow to trigger. */
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -304,7 +316,8 @@ const DBQ_CSS = `
   color: var(--color-text-primary, #1a1a1a);
 }
 .dbq-chart {
-  padding: 1rem;
+  /* Fluid chart padding so narrow viewports don't burn 32px on padding alone. */
+  padding: clamp(0.5rem, 2vw, 1rem);
   border-radius: var(--border-radius-sm, 0.5rem);
   border: 1px solid var(--color-border-primary, #e5e7eb);
   background: var(--color-background-secondary, #f9fafb);
@@ -318,10 +331,12 @@ const DBQ_CSS = `
    Do NOT override the canvas/svg sizing — Vega manages its own intrinsic
    size, and fighting it via CSS causes a layout feedback loop on mouse move
    (Vega writes width/height → our !important overrides → Vega's resize
-   listener refits → flicker). */
+   listener refits → flicker). min-width:0 lets the inner div shrink below
+   its intrinsic content width when the parent narrows. */
 .dbq-chart > div,
 .dbq-chart .vega-embed {
   width: 100%;
+  min-width: 0;
 }
 .dbq-table-wrap {
   border-radius: var(--border-radius-sm, 0.5rem);
@@ -358,6 +373,36 @@ const DBQ_CSS = `
   font-size: var(--font-text-sm-size, 0.875rem);
   line-height: var(--font-text-sm-line-height, 1.25rem);
   color: var(--color-text-secondary, #6b7280);
+}
+
+/* ---------- Mobile (≤640px) ---------- */
+/* Categorical changes only: touch-target sizing and the SQL/copy stack
+   reflow. Fluid spacing is handled above via clamp() so it scales smoothly
+   across all widths and doesn't snap at the breakpoint. */
+@media (max-width: 640px) {
+  /* Comfortable tap targets — bump block-axis padding only, leave the
+     horizontal padding alone so labels still read naturally. */
+  .dbq-tab,
+  .dbq-pager-btn {
+    padding-block: 0.625rem;
+  }
+  /* On wide screens the copy button overlays the SQL block (familiar code-
+     block pattern). On narrow screens that overlay crowds long SQL and is
+     a sub-30px tap target, so we drop absolute positioning, let the wrap
+     stack column-wise, and give the button a real tap surface. */
+  .dbq-sql-wrap {
+    display: flex;
+    flex-direction: column;
+  }
+  .dbq-sql-block {
+    padding-right: 0.9rem;
+  }
+  .dbq-copy-btn {
+    position: static;
+    align-self: flex-end;
+    margin: 0.4rem;
+    padding: 0.5rem 0.9rem;
+  }
 }
 `;
 
@@ -425,42 +470,59 @@ function DBQueryApp() {
   const [historySearch, setHistorySearch] = useState("");
   const [historyPage, setHistoryPage] = useState(0);
 
-  const getLastResult = useCallTool<QueryResult>("get_last_result");
   const listQueries = useCallTool<{ entities?: HistoryEntry[] } | HistoryEntry[]>(
     "list_queries",
   );
   const vegaConfig = useVegaConfig();
 
-  const refresh = useCallback(async () => {
-    try {
-      const res = await getLastResult.call({});
-      if (!res.isError && isQueryResult(res.data)) setResult(res.data);
-    } catch {
-      // non-critical — keep previous result on transport failure
-    }
-  }, [getLastResult]);
+  // Tracks the head id observed at the last refresh. Lets us tell whether
+  // the user is currently viewing what was the head (auto-advance to the
+  // new head when a fresh result lands) versus a manually selected history
+  // entry (don't yank them away).
+  const prevHeadRef = useRef<string | null>(null);
 
+  // The entity store IS the source of truth. list_queries returns newest-first
+  // (Upjack default), so entries[0] is the current answer and the rest is
+  // history. There's no separate "last result" cache to read.
+  //
+  // Contract assumption: useDataSync only fires for entity-store mutations
+  // (Upjack emits `synapse/data-changed` on create/update/delete). If a
+  // future tool starts emitting it for unrelated reasons, this will refetch
+  // the full HISTORY_FETCH_LIMIT on every ping — fine today, worth an
+  // incremental fetch then.
   const refreshHistory = useCallback(async () => {
     try {
       const res = await listQueries.call({ limit: HISTORY_FETCH_LIMIT });
       if (res.isError || !res.data) return;
-      const entities = Array.isArray(res.data) ? res.data : (res.data.entities ?? []);
-      setHistory(entities.filter(isQueryResult) as HistoryEntry[]);
+      const raw = Array.isArray(res.data) ? res.data : (res.data.entities ?? []);
+      const entries = raw.filter(isHistoryEntry);
+      const newHead = entries[0] ?? null;
+      const seenHead = prevHeadRef.current;
+      setHistory(entries);
+      setResult((prev) => {
+        // Already on the new head — nothing to update. Avoids a re-render
+        // with identical content if data-changed fires without a head shift.
+        if (newHead && prev.id === newHead.id) return prev;
+        // Initial load (no current selection) → seed from the head.
+        if (!prev.id) return newHead ?? prev;
+        // User is currently viewing what was the head; promote them to the
+        // new head when one lands. Otherwise they've selected a specific
+        // historical entry — leave it alone.
+        if (prev.id === seenHead && newHead) return newHead;
+        return prev;
+      });
+      prevHeadRef.current = newHead?.id ?? null;
     } catch {
       // non-critical — history just stays empty
     }
   }, [listQueries]);
 
   useEffect(() => {
-    refresh();
     refreshHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useDataSync(() => {
-    refresh();
-    refreshHistory();
-  });
+  useDataSync(refreshHistory);
 
   // Reset pagination when the search term changes.
   useEffect(() => {
@@ -753,6 +815,15 @@ function isQueryResult(value: unknown): value is QueryResult {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
   return Array.isArray(v.columns) && Array.isArray(v.rows);
+}
+
+/** Like isQueryResult, but also requires the persistence-side fields that
+ *  list_queries always returns. Lets us drop the `as HistoryEntry[]` cast in
+ *  refreshHistory — the types match the runtime promise. */
+function isHistoryEntry(value: unknown): value is HistoryEntry {
+  if (!isQueryResult(value)) return false;
+  const v = value as Record<string, unknown>;
+  return typeof v.id === "string" && typeof v.created_at === "string";
 }
 
 export function App() {

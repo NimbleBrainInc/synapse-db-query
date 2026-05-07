@@ -4,12 +4,15 @@ Tools split by concern:
   - `get_schema`      : introspect the DB (agent-internal)
   - `run_query`       : execute a SELECT, return rows (agent-internal)
   - `present_result`  : commit a row set as the user-visible answer (UI-facing;
-                        also persists as a `query` Upjack entity for history)
-  - `get_last_result` : return the most recently presented result (UI sync)
+                        also persists as a `query` Upjack entity — the entity
+                        store IS the durable record, the bundle holds no
+                        in-process view state)
 
 Upjack auto-generates `list_queries`, `search_queries`, and `get_query` from
 the entity manifest (create/update/delete suppressed — presented results are
-immutable snapshots; `present_result` is the sole writer).
+immutable snapshots; `present_result` is the sole writer). The widget reads
+`list_queries` to render the current view (newest entity = current answer)
+and the full history.
 """
 
 from __future__ import annotations
@@ -65,6 +68,9 @@ mcp._mcp_server.instructions = (
     "  5. set_custom_instructions(text) — save user conventions (default time\n"
     "     window, schema scope, soft-delete rules, naming quirks) when the user\n"
     "     explicitly asks. Empty clears. Picked up on every turn after saving."
+    "\n\nThis bundle is stateless across calls. Every presented result is a "
+    "fresh `query` entity; the widget reads `list_queries` to render. Do not "
+    "expect the bundle to remember anything between tool calls."
 )
 
 # libpq-recognized connection parameters. Anything else (e.g. TablePlus's
@@ -98,11 +104,6 @@ def _sanitize_database_url(url: str) -> str:
 DATABASE_URL = _sanitize_database_url(os.environ.get("DATABASE_URL", ""))
 QUERY_TIMEOUT_MS = int(os.environ.get("QUERY_TIMEOUT_MS", "10000"))
 MAX_ROWS = int(os.environ.get("MAX_ROWS", "10000"))
-
-# ---------- Session state ----------
-
-_last_result: dict[str, Any] | None = None
-
 
 # ---------- Helpers ----------
 
@@ -371,53 +372,21 @@ async def present_result(
         summary: Optional one-line takeaway the agent wants surfaced in the UI
             (in addition to the fuller answer it writes in chat). Keep short.
     """
-    global _last_result
-    row_count = len(rows)
     payload = {
         "sql": sql,
         "question": question,
         "summary": summary,
         "columns": columns,
         "rows": rows,
-        "row_count": row_count,
+        "row_count": len(rows),
         "truncated": False,
         "vega_spec": vega_spec,
     }
 
-    # Persist as a Upjack entity so this result is searchable / replayable via
-    # list_queries, search_queries, get_query. Failure here must not break the
-    # user-facing display — worst case, history misses this one entry.
-    try:
-        entity = _app.create_entity("query", payload)
-        payload = {**payload, "id": entity.get("id"), "created_at": entity.get("created_at")}
-    except Exception as err:  # noqa: BLE001 — history is best-effort
-        print(f"[db-query] failed to persist query entity: {err}", file=sys.stderr)
-
-    _last_result = payload
-    return payload
-
-
-@mcp.tool()
-async def get_last_result() -> dict[str, Any]:
-    """Return the most recently presented result, or an empty placeholder.
-
-    This returns whatever was last committed via `present_result`. Probes made
-    through `run_query` do not touch this — so the UI only ever reflects the
-    final answer the agent decided to show the user.
-    """
-    if _last_result is None:
-        return {
-            "id": None,
-            "sql": None,
-            "question": None,
-            "summary": None,
-            "columns": [],
-            "rows": [],
-            "row_count": 0,
-            "truncated": False,
-            "vega_spec": None,
-        }
-    return _last_result
+    # The entity store is the durable record. The widget reads list_queries
+    # (newest first) to render — there's no separate in-process cache.
+    entity = _app.create_entity("query", payload)
+    return {**payload, "id": entity.get("id"), "created_at": entity.get("created_at")}
 
 
 # ---------- UI resource ----------
@@ -482,7 +451,9 @@ _SETTINGS_HTML = """\
   p.lede { font-size: 13px; color: #555; margin-bottom: 12px; }
   .section { padding: 16px; border: 1px solid #e5e5e5; border-radius: 8px; background: #fff; }
   textarea { width: 100%; min-height: 180px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; line-height: 1.5; resize: vertical; }
-  .row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+  /* flex-wrap so Save / Reset / count stack gracefully when the iframe is narrow
+     instead of overflowing horizontally. */
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
   .count { font-size: 12px; color: #777; margin-left: auto; }
   .count.over { color: #b91c1c; font-weight: 500; }
   button { padding: 8px 14px; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; background: #2563eb; color: #fff; }

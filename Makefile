@@ -1,16 +1,26 @@
-.PHONY: dev build build-ui run run-http clean typecheck lint
+.PHONY: dev build build-ui bundle clean clean-bundle check lint typecheck test run run-http
 
-# Development — starts MCP server + Vite with HMR preview
+# Development — Vite with HMR preview (server runs from src/, no deps snapshot)
 dev:
 	cd ui && npm run dev
 
-# Build — UI + server deps
+# Build — UI only (faster than `bundle`, skips deps refresh)
 build: build-ui
 
 build-ui:
 	cd ui && npm install && npm run build
 
-# Run server in stdio mode
+# Bundle — full build for the path-install path used by mpak / NimbleBrain.
+# Refreshes ui/dist/ AND deps/ (the snapshot Python imports from).
+# Run this after any src/ or ui/ change before retesting under NimbleBrain,
+# then restart the runtime so the bundle subprocess respawns.
+bundle: build-ui clean-bundle
+	@uv pip install --target ./deps --only-binary :all: . 2>/dev/null || uv pip install --target ./deps .
+
+clean-bundle:
+	rm -rf deps/
+
+# Run server in stdio mode (uses src/ directly)
 run:
 	uv run python -m synapse_db_query.server
 
@@ -18,15 +28,20 @@ run:
 run-http:
 	uv run uvicorn synapse_db_query.server:app --port 8001
 
-# Verify
-typecheck:
-	uv run ty check src/
+# Verification — single quality gate. Run before commits and after `bundle`.
+check: lint test
 
 lint:
 	uv run ruff check src/
 
-clean:
-	rm -rf ui/dist ui/node_modules deps/*.egg-info
+typecheck:
+	uv run ty check src/
+
+test:
+	uv run pytest tests/
+
+clean: clean-bundle
+	rm -rf ui/dist ui/node_modules
 
 # Version bump — updates manifest.json, server.json, pyproject.toml, __init__.py
 bump:
