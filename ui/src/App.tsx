@@ -495,11 +495,14 @@ function DBQueryApp() {
       const res = await listQueries.call({ limit: HISTORY_FETCH_LIMIT });
       if (res.isError || !res.data) return;
       const raw = Array.isArray(res.data) ? res.data : (res.data.entities ?? []);
-      const entries = raw.filter(isQueryResult) as HistoryEntry[];
+      const entries = raw.filter(isHistoryEntry);
       const newHead = entries[0] ?? null;
       const seenHead = prevHeadRef.current;
       setHistory(entries);
       setResult((prev) => {
+        // Already on the new head — nothing to update. Avoids a re-render
+        // with identical content if data-changed fires without a head shift.
+        if (newHead && prev.id === newHead.id) return prev;
         // Initial load (no current selection) → seed from the head.
         if (!prev.id) return newHead ?? prev;
         // User is currently viewing what was the head; promote them to the
@@ -812,6 +815,15 @@ function isQueryResult(value: unknown): value is QueryResult {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
   return Array.isArray(v.columns) && Array.isArray(v.rows);
+}
+
+/** Like isQueryResult, but also requires the persistence-side fields that
+ *  list_queries always returns. Lets us drop the `as HistoryEntry[]` cast in
+ *  refreshHistory — the types match the runtime promise. */
+function isHistoryEntry(value: unknown): value is HistoryEntry {
+  if (!isQueryResult(value)) return false;
+  const v = value as Record<string, unknown>;
+  return typeof v.id === "string" && typeof v.created_at === "string";
 }
 
 export function App() {
