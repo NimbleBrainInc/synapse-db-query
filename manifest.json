@@ -38,10 +38,6 @@
       "description": "Display a query result to the user. The only way to update the UI. Call exactly once per user question, with the final rows (and a Vega-Lite spec when the shape is visualizable)."
     },
     {
-      "name": "get_last_result",
-      "description": "Return the most recently presented result (for UI sync)."
-    },
-    {
       "name": "set_custom_instructions",
       "description": "Save custom instructions for this DB Query bundle (default time windows, schema scoping, soft-delete rules, naming quirks). Empty clears. Capped at 8 KiB."
     }
