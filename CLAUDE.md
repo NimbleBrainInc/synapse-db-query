@@ -29,6 +29,17 @@ caused cross-conversation contamination in long-running runtimes. Do not
 reintroduce process-scoped state. If a future feature needs continuity, the
 caller passes the context (entity id, query reference) explicitly.
 
+**Isolation scope (be honest about what's fixed):** removing the in-process
+global eliminates the cross-tenant / cross-process leak that the old
+`_last_result` produced. What remains — `list_queries` history — is scoped
+to the **workspace directory** the host hands the bundle (`UPJACK_ROOT` →
+`MPAK_WORKSPACE` → `<bundle>/workspace`). If the host gives each conversation
+its own workspace, conversations are isolated. If the host shares one
+workspace across N callers, those N callers share `list_queries` results —
+which is fine for "shared org history" but not for per-conversation privacy.
+The bundle inherits whatever scope the host grants; it is not the bundle's
+job to invent identity to subdivide further.
+
 ## Two run modes
 
 | Mode | What runs | Source of truth | When to use |
@@ -69,7 +80,7 @@ Both failure modes are silent.
 |---|---|---|
 | Tool returns "method not found" you just added | Bundle subprocess emitted `tools/list` at startup | Restart runtime |
 | Tool body unchanged after edit | `deps/synapse_db_query/` is masking `src/`, OR subprocess holds old code | `make bundle` + restart |
-| Settings panel shows old sections | `_INLINE_SETTINGS_HTML` is a module-level constant, frozen at process start | Restart runtime |
+| Settings panel shows old sections | `_SETTINGS_HTML` is a module-level constant, frozen at process start | Restart runtime |
 | Widget UI looks old after `npm run build` | Iframe cached the previous `index.html` | Hard-reload iframe (Cmd+Shift+R) |
 | Cross-conversation result contamination | Reintroduced module-level state | Don't. The bundle is stateless by design — see above. |
 

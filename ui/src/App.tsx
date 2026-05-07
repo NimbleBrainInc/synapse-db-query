@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   SynapseProvider,
   useCallTool,
@@ -15,6 +15,11 @@ import { expressionInterpreter } from "vega-interpreter";
 type Row = Record<string, unknown>;
 
 type QueryResult = {
+  // Present once the entity is persisted (i.e. anything that came back from
+  // present_result or list_queries). EMPTY_RESULT lacks them — that's how we
+  // tell "no selection yet" from "user is viewing entry X".
+  id?: string;
+  created_at?: string;
   sql: string | null;
   question: string | null;
   summary: string | null;
@@ -470,17 +475,40 @@ function DBQueryApp() {
   );
   const vegaConfig = useVegaConfig();
 
+  // Tracks the head id observed at the last refresh. Lets us tell whether
+  // the user is currently viewing what was the head (auto-advance to the
+  // new head when a fresh result lands) versus a manually selected history
+  // entry (don't yank them away).
+  const prevHeadRef = useRef<string | null>(null);
+
   // The entity store IS the source of truth. list_queries returns newest-first
   // (Upjack default), so entries[0] is the current answer and the rest is
   // history. There's no separate "last result" cache to read.
+  //
+  // Contract assumption: useDataSync only fires for entity-store mutations
+  // (Upjack emits `synapse/data-changed` on create/update/delete). If a
+  // future tool starts emitting it for unrelated reasons, this will refetch
+  // the full HISTORY_FETCH_LIMIT on every ping — fine today, worth an
+  // incremental fetch then.
   const refreshHistory = useCallback(async () => {
     try {
       const res = await listQueries.call({ limit: HISTORY_FETCH_LIMIT });
       if (res.isError || !res.data) return;
       const raw = Array.isArray(res.data) ? res.data : (res.data.entities ?? []);
       const entries = raw.filter(isQueryResult) as HistoryEntry[];
+      const newHead = entries[0] ?? null;
+      const seenHead = prevHeadRef.current;
       setHistory(entries);
-      if (entries.length > 0) setResult(entries[0]);
+      setResult((prev) => {
+        // Initial load (no current selection) → seed from the head.
+        if (!prev.id) return newHead ?? prev;
+        // User is currently viewing what was the head; promote them to the
+        // new head when one lands. Otherwise they've selected a specific
+        // historical entry — leave it alone.
+        if (prev.id === seenHead && newHead) return newHead;
+        return prev;
+      });
+      prevHeadRef.current = newHead?.id ?? null;
     } catch {
       // non-critical — history just stays empty
     }
