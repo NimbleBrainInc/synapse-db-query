@@ -4,6 +4,17 @@ All notable changes to this bundle. Versions follow the mpak v0.x.y convention
 (see `mcp-servers/VERSIONING.md`): minor bumps may include breaking changes
 during the unstable channel.
 
+## 0.4.4
+
+### Fixed
+
+- **Host-manifest category rejected by the platform gate.** `_meta["ai.nimblebrain/host"].category`
+  was `"data"`, which is not in the platform's allowed enum
+  (`sales, marketing, operations, research, finance, hr, engineering, support, custom`).
+  Newer NimbleBrain platform builds hard-validate this block at install time and
+  refuse to start the bundle (`schema-invalid`). Changed to `"operations"`. The
+  unrelated `ai.nimblebrain/upjack` display category is left as-is (not gated).
+
 ## 0.4.0
 
 ### Removed (breaking)
