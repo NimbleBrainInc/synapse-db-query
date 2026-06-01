@@ -2,7 +2,7 @@
   "manifest_version": "0.4",
   "name": "@nimblebraininc/synapse-db-query",
   "display_name": "Synapse DB Query",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Natural-language Postgres query app with dynamic Vega-Lite visualizations",
   "author": {
     "name": "NimbleBrain Inc",
@@ -68,7 +68,7 @@
       "host_version": "1.0",
       "name": "DB Query",
       "icon": "database",
-      "category": "data",
+      "category": "operations",
       "placements": [
         {
           "slot": "sidebar.apps",
